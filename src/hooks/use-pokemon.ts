@@ -19,7 +19,6 @@ export function usePokemon(idOrName: string | number) {
 }
 
 export function usePokemonSearch(query: string) {
-  console.log("query", query);
   return useQuery({
     queryKey: ["pokemon-search", query],
     queryFn: ({ signal }) => pokemonApi.searchPokemon(query, signal),

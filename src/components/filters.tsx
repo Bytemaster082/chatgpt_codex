@@ -102,7 +102,7 @@ export function Toggle({
         className
       )}
     >
-      {Icon && <Icon className="h-4 w-4" />}
+      {Icon && <Icon className="h-4 w-4 fill-red-500 text-red-500" />}
       <span>{label}</span>
     </button>
   );
@@ -116,13 +116,7 @@ export function FavoritesToggle({
   onChange: (value: boolean) => void;
 }) {
   return (
-    <Toggle
-      value={value}
-      onChange={onChange}
-      label="Favorites"
-      icon={Heart}
-      className="border-red-300 hover:border-red-400 data-[state=true]:border-red-500 data-[state=true]:bg-red-50 data-[state=true]:text-red-600 dark:border-red-600 dark:hover:border-red-500 dark:data-[state=true]:border-red-400 dark:data-[state=true]:bg-red-900 dark:data-[state=true]:text-red-400"
-    />
+    <Toggle value={value} onChange={onChange} label="Favorites" icon={Heart} />
   );
 }
 

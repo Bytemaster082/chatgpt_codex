@@ -19,7 +19,7 @@ export function useURLState() {
   const state = useMemo(
     (): URLState => ({
       page: parseInt(searchParams.get("page") || "1"),
-      search: searchParams.get("q") || "",
+      search: searchParams.get("search") || "",
       type: searchParams.get("type") || "",
       sort: (searchParams.get("sort") as "name" | "id") || "id",
       favorites: searchParams.get("favorites") === "true",

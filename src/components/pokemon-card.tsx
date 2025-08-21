@@ -13,12 +13,14 @@ interface PokemonCardProps {
   pokemonId: number;
   pokemonName: string;
   className?: string;
+  currentPage: number;
 }
 
 export function PokemonCard({
   pokemonId,
   pokemonName,
   className,
+  currentPage,
 }: PokemonCardProps) {
   const [isFavorite, setIsFavorite] = useState(() =>
     favoritesStorage.isFavorite(pokemonId)
@@ -64,6 +66,18 @@ export function PokemonCard({
 
     setIsFavorite(newFavoriteState);
   };
+  const handleNavigate = () => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem(
+        "pokemon-list-scroll",
+        JSON.stringify({
+          scrollY: window.scrollY,
+          focusId: pokemonId,
+          page: currentPage,
+        })
+      );
+    }
+  };
 
   if (isLoading) {
     return <PokemonCardSkeleton className={className} />;
@@ -96,6 +110,9 @@ export function PokemonCard({
         "group relative block overflow-hidden rounded-lg border border-gray-200 bg-white p-4 transition-all hover:border-blue-300 hover:shadow-lg dark:border-gray-700 dark:bg-gray-800 dark:hover:border-blue-600",
         className
       )}
+      id={`pokemon-card-${pokemon.id}`}
+      onClick={handleNavigate}
+      scroll={false}
     >
       {/* Favorite Button */}
       <button
