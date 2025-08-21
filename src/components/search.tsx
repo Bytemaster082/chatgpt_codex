@@ -9,7 +9,6 @@ interface SearchProps {
   onChange: (value: string) => void;
   placeholder?: string;
   className?: string;
-  debounceMs?: number;
 }
 
 export function Search({
@@ -17,7 +16,6 @@ export function Search({
   onChange,
   placeholder = "Search Pokémon...",
   className,
-  debounceMs = 500,
 }: SearchProps) {
   const [inputValue, setInputValue] = useState(value);
 

@@ -20,7 +20,7 @@ A polished React application that explores the PokéAPI with advanced search, fi
 
 3. **Search, Filter, Sort**
 
-   - Debounced search (300ms) bound to URL parameters
+   - Debounced search (500ms) bound to URL parameters
    - Type filtering with dropdown selection
    - Sort by name or ID
    - URL reflects all state (shareable and reload-safe)
@@ -83,7 +83,7 @@ src/
     └── providers.tsx     # React Query and theme providers
 ```
 
-## Getting Started
+## How to run
 
 ### Prerequisites
 
@@ -141,7 +141,7 @@ The app integrates with the [PokéAPI](https://pokeapi.co/) to fetch:
 
 All search, filter, sort, and pagination state is managed in the URL:
 
-- `?q=search` - Search query
+- `?search` - Search query
 - `?type=fire` - Type filter
 - `?sort=name` - Sort order
 - `?page=2` - Current page
@@ -182,6 +182,19 @@ The app can be deployed to any platform that supports Next.js:
 - **Netlify**
 - **Railway**
 - **Self-hosted**
+
+## Architecture & Trade-offs
+
+- **Next.js App Router** for file-based routing and automatic code splitting. Chosen for its developer experience, but it means the app depends on server-side Node.js features during build.
+- **React Query** manages caching and background updates at the cost of additional bundle size.
+- **Client-side Search** fetches the full Pokémon list once and filters in-memory. This avoids complex backend infrastructure but results in a heavy initial request.
+- **localStorage Favorites** keep the implementation simple, though favorites do not sync across devices.
+
+## What I'd Ship Next
+
+- Add a real test suite to cover hooks and URL state logic.
+- Replace the full-list search with a server-backed search API or indexed cache for better performance.
+- Persist favorites and search cache in IndexedDB for offline capability.
 
 ## Contributing
 

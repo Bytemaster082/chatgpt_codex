@@ -139,17 +139,26 @@ export const pokemonApi = {
       };
     }
 
-    // PokéAPI doesn't have a direct search endpoint, so we'll fetch all and filter client-side
-    // In a real app, you might want to implement server-side search
-    const url = `${BASE_URL}/pokemon?limit=1500`; // Increased to get more Pokemon
-    const response = await fetchWithAbort<PokemonListResponse>(url, signal);
+    // PokéAPI doesn't have a direct search endpoint, so we'll fetch the full list and
+    // filter client-side. We first retrieve the total count, then request all entries.
+    const countUrl = `${BASE_URL}/pokemon?limit=1`;
+    const countResponse = await fetchWithAbort<PokemonListResponse>(
+      countUrl,
+      signal
+    );
 
-    const filteredResults = response.results.filter((pokemon) =>
+    const listUrl = `${BASE_URL}/pokemon?limit=${countResponse.count}`;
+    const fullResponse = await fetchWithAbort<PokemonListResponse>(
+      listUrl,
+      signal
+    );
+
+    const filteredResults = fullResponse.results.filter((pokemon) =>
       pokemon.name.toLowerCase().includes(query.toLowerCase().trim())
     );
 
     return {
-      ...response,
+      ...fullResponse,
       results: filteredResults,
       count: filteredResults.length,
     };

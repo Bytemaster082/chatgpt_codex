@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, Suspense, useEffect } from "react";
+import { useMemo, useState, Suspense, useEffect, useRef } from "react";
 import { Header } from "@/components/header";
 import { Search } from "@/components/search";
 import { Select, FavoritesToggle, SortToggle } from "@/components/filters";
@@ -24,8 +24,15 @@ import { cn } from "@/lib/utils";
 const ITEMS_PER_PAGE = 20;
 
 function HomePageContent() {
-  const { state, setSearch, setType, setSort, setFavorites, setPage } =
-    useURLState();
+  const {
+    state,
+    setSearch,
+    setType,
+    setSort,
+    setFavorites,
+    setPage,
+    updateState,
+  } = useURLState();
   const [favorites, setFavoritesState] = useState(() =>
     favoritesStorage.getFavorites()
   );
@@ -70,6 +77,8 @@ function HomePageContent() {
 
   const { data: typesData, isLoading: isLoadingTypes } = usePokemonTypes();
 
+  const scrollRestored = useRef(false);
+
   // Determine which data to use based on current filters
   const currentData = useMemo(() => {
     if (state.search && state.search.length >= 2) {
@@ -105,19 +114,26 @@ function HomePageContent() {
 
   // Filter and sort Pokémon
   const filteredAndSortedPokemon = useMemo(() => {
-    if (!currentData?.results) return [];
+    let pokemon: Array<{ name: string; url: string }> = [];
 
-    let pokemon = [...currentData.results];
+    if (state.favorites && !state.search && !state.type) {
+      // When only favorites are selected, use all favorites from storage
+      pokemon = favorites.map((fav) => ({
+        name: fav.name,
+        url: `https://pokeapi.co/api/v2/pokemon/${fav.id}/`,
+      }));
+    } else {
+      if (!currentData?.results) return [];
+      pokemon = [...currentData.results];
 
-    // Filter by favorites if enabled
-    if (state.favorites) {
-      const favoriteIds = new Set(favorites.map((fav) => fav.id));
-      pokemon = pokemon.filter((p) => favoriteIds.has(extractIdFromUrl(p.url)));
+      // Filter by favorites when combined with other filters
+      if (state.favorites) {
+        const favoriteIds = new Set(favorites.map((fav) => fav.id));
+        pokemon = pokemon.filter((p) =>
+          favoriteIds.has(extractIdFromUrl(p.url))
+        );
+      }
     }
-
-    // Note: Type filtering would require fetching individual Pokemon data
-    // For now, we'll show all Pokemon and let the user filter by favorites and search
-    // Type filtering could be implemented by fetching Pokemon details and filtering by type
 
     // Sort
     pokemon.sort((a, b) => {
@@ -131,7 +147,50 @@ function HomePageContent() {
     });
 
     return pokemon;
-  }, [currentData, state.favorites, state.sort, favorites]);
+  }, [
+    currentData,
+    state.favorites,
+    state.search,
+    state.type,
+    state.sort,
+    favorites,
+  ]);
+
+  // Paginate filtered results when client-side pagination is needed
+  const paginatedPokemon = useMemo(() => {
+    if (state.search || state.type || state.favorites) {
+      const start = (state.page - 1) * ITEMS_PER_PAGE;
+      return filteredAndSortedPokemon.slice(start, start + ITEMS_PER_PAGE);
+    }
+    // When no filters are active, API already returns the correct page
+    return filteredAndSortedPokemon;
+  }, [
+    filteredAndSortedPokemon,
+    state.page,
+    state.search,
+    state.type,
+    state.favorites,
+  ]);
+
+  useEffect(() => {
+    if (scrollRestored.current) return;
+    const stored = sessionStorage.getItem("pokemon-list-scroll");
+    if (!stored || paginatedPokemon.length === 0) return;
+    try {
+      const { scrollY, focusId, page } = JSON.parse(stored);
+      if (page && page !== state.page) {
+        updateState({ page }, false);
+        return;
+      }
+      window.scrollTo(0, scrollY);
+      const el = document.getElementById(`pokemon-card-${focusId}`);
+      if (el) {
+        el.focus();
+      }
+    } catch {}
+    sessionStorage.removeItem("pokemon-list-scroll");
+    scrollRestored.current = true;
+  }, [paginatedPokemon, state.page, updateState]);
 
   // Type options for filter
   const typeOptions = useMemo(() => {
@@ -146,11 +205,19 @@ function HomePageContent() {
     ];
   }, [typesData]);
 
-  // Handle pagination (disable for search and type filtering)
+  // Handle pagination
   const totalPages = useMemo(() => {
-    if (state.search || state.type) return 1; // No pagination for filtered results
+    if (state.search || state.type || state.favorites) {
+      return Math.ceil(filteredAndSortedPokemon.length / ITEMS_PER_PAGE) || 1;
+    }
     return Math.ceil((currentData?.count || 0) / ITEMS_PER_PAGE);
-  }, [state.search, state.type, currentData?.count]);
+  }, [
+    state.search,
+    state.type,
+    state.favorites,
+    filteredAndSortedPokemon.length,
+    currentData?.count,
+  ]);
 
   const hasNextPage = state.page < totalPages;
   const hasPrevPage = state.page > 1;
@@ -190,7 +257,6 @@ function HomePageContent() {
               onChange={setSearch}
               placeholder="Search Pokémon by name..."
               className="max-w-md"
-              debounceMs={500}
             />
           )}
 
@@ -223,8 +289,11 @@ function HomePageContent() {
             <div className="h-4 w-32 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
           ) : (
             <span>
-              Showing {filteredAndSortedPokemon.length} of{" "}
-              {currentData?.count || 0} Pokémon
+              Showing {paginatedPokemon.length} of{" "}
+              {state.search || state.type || state.favorites
+                ? filteredAndSortedPokemon.length
+                : currentData?.count || 0}{" "}
+              Pokémon
               {state.favorites && ` (${favorites.length} favorites)`}
               {state.search && ` matching "${state.search}"`}
               {state.type && ` of type "${state.type}"`}
@@ -267,18 +336,19 @@ function HomePageContent() {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredAndSortedPokemon.map((pokemon) => (
+            {paginatedPokemon.map((pokemon) => (
               <PokemonCard
                 key={pokemon.name}
                 pokemonId={extractIdFromUrl(pokemon.url)}
                 pokemonName={pokemon.name}
+                currentPage={state.page}
               />
             ))}
           </div>
         )}
 
-        {/* Pagination - only show for normal list view */}
-        {!state.search && !state.type && !state.favorites && totalPages > 1 && (
+        {/* Pagination */}
+        {totalPages > 1 && (
           <div className="mt-8 flex justify-center">
             <nav className="flex items-center space-x-2">
               <button
